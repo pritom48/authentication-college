@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
+const Login = ({ storedHash, storedUsername }) => {
+  const navigate = useNavigate();
   const [image, setImage] = useState(null);
   const [gridImages, setGridImages] = useState([]);
   const [selectedGrids, setSelectedGrids] = useState([]);
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
   const canvasRef = useRef(null);
 
   const handleFileChange = (event) => {
@@ -15,7 +17,7 @@ const Login = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImage(e.target.result);
-        setSelectedGrids([]); // Reset selections on new upload
+        setSelectedGrids([]);
       };
       reader.readAsDataURL(file);
     }
@@ -73,57 +75,92 @@ const Login = () => {
     });
   };
 
+  const handleLogin = async () => {
+    const gridValues = selectedGrids.join("");
+    const combinedValue = password + gridValues;
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(combinedValue);
+
+    const hashBuffer = await crypto.subtle.digest("SHA-512", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    if (username === storedUsername && hashHex === storedHash) {
+      setMessage("Login Successful!");
+    } else {
+      setMessage("Invalid credentials!");
+    }
+  };
+
   return (
-    <div className="p-4 border rounded-lg shadow-md w-96 mx-auto text-center">
-      <input
-        type="text"
-        placeholder="Username"
-        className="input input-bordered w-full mb-2"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        className="input input-bordered w-full mb-2"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        className="input input-bordered w-full mb-2"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <input
-        type="file"
-        className="file-input file-input-neutral mb-4"
-        onChange={handleFileChange}
-      />
-      {image && (
-        <div className="mt-4 grid grid-cols-4 gap-1">
-          {gridImages.map((src, index) => (
-            <div
-              key={index}
-              className={`relative w-full cursor-pointer border-2 rounded ${
-                selectedGrids.includes(index)
-                  ? "border-blue-500"
-                  : "border-transparent"
-              }`}
-              onClick={() => toggleGridSelection(index)}
-            >
-              <img src={src} alt={`Grid ${index + 1}`} className="w-full" />
-              {selectedGrids.includes(index) && (
-                <span className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                  {selectedGrids.indexOf(index) + 1}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      <canvas ref={canvasRef} className="hidden"></canvas>
+    <div className="p-4 border rounded-lg shadow-md w-full flex justify-center gap-4">
+      <div className="w-96 text-center">
+        <h2 className="text-xl font-bold mb-4">Login</h2>
+        <input
+          type="text"
+          placeholder="Username"
+          className="input input-bordered w-full mb-2"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="input input-bordered w-full mb-2"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <input
+          type="file"
+          className="file-input file-input-neutral mb-4"
+          onChange={handleFileChange}
+        />
+        {image && (
+          <div className="mt-4 grid grid-cols-4 gap-1">
+            {gridImages.map((src, index) => (
+              <div
+                key={index}
+                className={`relative w-full cursor-pointer border-2 rounded ${
+                  selectedGrids.includes(index)
+                    ? "border-blue-500"
+                    : "border-transparent"
+                }`}
+                onClick={() => toggleGridSelection(index)}
+              >
+                <img src={src} alt={`Grid ${index + 1}`} className="w-full" />
+                {selectedGrids.includes(index) && (
+                  <span className="absolute top-1 left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                    {selectedGrids.indexOf(index) + 1}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <canvas ref={canvasRef} className="hidden"></canvas>
+        <p className="mt-4 text-sm">
+          <a href="/signup" className="text-blue-500 hover:underline">
+            New user? Signup
+          </a>
+          |
+          <a
+            href="/forgot-password"
+            className="text-blue-500 hover:underline ml-2"
+          >
+            Forgot password?
+          </a>
+        </p>
+        <button
+          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          onClick={handleLogin}
+        >
+          Login
+        </button>
+        <p className="mt-4 text-red-500 font-bold">{message}</p>
+      </div>
     </div>
   );
 };

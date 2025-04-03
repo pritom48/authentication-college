@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 
-const Login = () => {
+const Signup = () => {
   const [image, setImage] = useState(null);
   const [gridImages, setGridImages] = useState([]);
   const [selectedGrids, setSelectedGrids] = useState([]);
@@ -164,4 +164,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;
