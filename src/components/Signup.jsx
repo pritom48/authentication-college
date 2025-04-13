@@ -155,7 +155,7 @@ const Signup = () => {
         </button>
       </div>
       <div className="w-64 p-4 border rounded-lg shadow-md bg-gray-100">
-        <h3 className="text-lg font-bold mb-2">Hash Value</h3>
+        <h3 className="text-lg font-bold text-black mb-2">Hash Value</h3>
         <p className="break-all text-sm text-gray-700">
           {hashValue || "No hash generated yet."}
         </p>
