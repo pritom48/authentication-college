@@ -9,7 +9,13 @@ import Login from "./components/login";
 function App() {
   const [count, setCount] = useState(0);
 
-  return <></>;
+  return (
+    <>
+      <Nevber></Nevber>
+
+      <Signup></Signup>
+    </>
+  );
 }
 
 export default App;

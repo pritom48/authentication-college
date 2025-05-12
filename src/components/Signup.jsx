@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { uploadToIPFS } from "../utils/pinata";
 
 const Signup = () => {
   const [image, setImage] = useState(null);
@@ -8,7 +9,11 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [hashValue, setHashValue] = useState("");
+  const [salt, setSalt] = useState("");
   const canvasRef = useRef(null);
+
+  const gridSize = 4; // 4x4 grid
+  const gridValues = Array.from({ length: 16 }, (_, i) => `G${i + 1}`); // Unique values G1 to G16
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -16,7 +21,7 @@ const Signup = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setImage(e.target.result);
-        setSelectedGrids([]); // Reset selections on new upload
+        setSelectedGrids([]);
       };
       reader.readAsDataURL(file);
     }
@@ -34,7 +39,6 @@ const Signup = () => {
       canvas.height = img.height;
       ctx.drawImage(img, 0, 0);
 
-      const gridSize = 4;
       const pieceWidth = img.width / gridSize;
       const pieceHeight = img.height / gridSize;
       const pieces = [];
@@ -74,24 +78,73 @@ const Signup = () => {
     });
   };
 
+  const generateSalt = (length = 16) => {
+    const charset =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let salt = "";
+    for (let i = 0; i < length; i++) {
+      salt += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return salt;
+  };
+
   const handleSignup = async () => {
-    const gridValues = selectedGrids.join("");
-    const combinedValue = password + gridValues;
+    if (password.length < 8) {
+      alert("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (selectedGrids.length < 6) {
+      alert("Please select at least 6 image grids.");
+      return;
+    }
 
     const encoder = new TextEncoder();
-    const data = encoder.encode(combinedValue);
-
-    const hashBuffer = await crypto.subtle.digest("SHA-512", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray
+    const passwordData = encoder.encode(password);
+    const hashedPasswordBuffer = await crypto.subtle.digest(
+      "SHA-512",
+      passwordData
+    );
+    const hashedPasswordArray = Array.from(
+      new Uint8Array(hashedPasswordBuffer)
+    );
+    const hashedPasswordHex = hashedPasswordArray
       .map((byte) => byte.toString(16).padStart(2, "0"))
       .join("");
 
-    setHashValue(hashHex);
+    const gridValueString = selectedGrids.join(""); // e.g. "014513"
+    const generatedSalt = generateSalt(); // use the function you defined
+    setSalt(generatedSalt); // update state
+
+    const combined = hashedPasswordHex + gridValueString + generatedSalt;
+    const combinedData = encoder.encode(combined);
+    const finalHashBuffer = await crypto.subtle.digest("SHA-512", combinedData);
+    const finalHashArray = Array.from(new Uint8Array(finalHashBuffer));
+    const finalHash = finalHashArray
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+
+    setHashValue(finalHash); // update hash in state
+
     console.log("Username:", username);
     console.log("Email:", email);
-    console.log("Encrypted Password:", hashHex);
     console.log("Selected Grids:", selectedGrids);
+    console.log("Hashed Password:", hashedPasswordHex);
+    console.log("Salt:", generatedSalt);
+    console.log("Final Hash:", finalHash);
+
+    const data = {
+      userID: username,
+      salt: generatedSalt,
+      finalHash,
+    };
+
+    try {
+      const cid = await uploadToIPFS(data);
+      console.log("Uploaded to IPFS. CID:", cid);
+    } catch (error) {
+      console.error("Error uploading to IPFS:", error);
+    }
   };
 
   return (
@@ -114,7 +167,7 @@ const Signup = () => {
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Password (Min 8 chars)"
           className="input input-bordered w-full mb-2"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -155,9 +208,13 @@ const Signup = () => {
         </button>
       </div>
       <div className="w-64 p-4 border rounded-lg shadow-md bg-gray-100">
-        <h3 className="text-lg font-bold text-black mb-2">Hash Value</h3>
+        <h3 className="text-lg font-bold text-black mb-2">Final Hash</h3>
         <p className="break-all text-sm text-gray-700">
           {hashValue || "No hash generated yet."}
+        </p>
+        <h3 className="text-md font-bold mt-2 text-black">Salt</h3>
+        <p className="break-all text-sm text-gray-700">
+          {salt || "No salt generated yet."}
         </p>
       </div>
     </div>
